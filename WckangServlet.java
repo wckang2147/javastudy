@@ -3,7 +3,9 @@ package com.lgcns.test;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -21,15 +23,60 @@ import org.eclipse.jetty.http.HttpFields;
 import org.eclipse.jetty.http.HttpMethod;
 
 public class WckangServlet extends HttpServlet {
+	public static HashMap<String, TraceJsonVo> traceMap;
 
-	public ContentResponse sendHttpGet(String url) throws Exception {
+	public WckangServlet() {
+		// TODO Auto-generated constructor stub
+		traceMap = new HashMap<>();
+	}
+
+	public ContentResponse sendHttpMessage(String url, HttpMethod method, HttpServletRequest req, String bodyStr)
+			throws Exception {
 		HttpClient httpClient = new HttpClient();
 		httpClient.start();
-		Request request = httpClient.newRequest(url).method(HttpMethod.GET);
+
+		Request request = httpClient.newRequest(url).method(method).timeout(5, TimeUnit.SECONDS);
+		if (method.equals(HttpMethod.POST))
+			request.content(new StringContentProvider(bodyStr, "utf-8"));
+
+		// Copy header from previous message.
+		Enumeration<String> headerNames = req.getHeaderNames();
+		while (headerNames.hasMoreElements()) {
+			String headerName = headerNames.nextElement();
+			request.header(headerName, req.getHeader(headerName));
+		}
+
 		ContentResponse contentRes = request.send();
 		System.out.println(contentRes.getContentAsString());
 		return contentRes;
 	}
+//
+//	public static ContentResponse sendPostJson(String url, String bodyStr) throws Exception {
+//
+//		// String jsonStr = "{\"key\": \"value\"}";
+//
+//		HttpClient httpClient = new HttpClient();
+//		httpClient.start();
+//
+//		// .header("content-type, "value1")
+//		Request req = httpClient.newRequest(url).method(HttpMethod.POST)
+//				.content(new StringContentProvider(bodyStr, "utf-8")).timeout(5, TimeUnit.SECONDS);
+//
+//		ContentResponse response = req.send();
+//
+//		System.out.println(response.getContentAsString());
+//
+//		// httpClient.stop();
+//		return response;
+//	}
+//	public ContentResponse sendHttpGet(String url) throws Exception {
+//		HttpClient httpClient = new HttpClient();
+//		httpClient.start();
+//		Request request = httpClient.newRequest(url).method(HttpMethod.GET);
+//		ContentResponse contentRes = request.send();
+//		System.out.println(contentRes.getContentAsString());
+//		return contentRes;
+//	}
 
 	public static String findUrl(String reqUri) {
 		String urlString = null;
@@ -57,14 +104,19 @@ public class WckangServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 
 	/**
-	 * GET �슂泥� 泥섎━
+	 * GET 占쎌뒄筌ｏ옙 筌ｌ꼶�봺
 	 */
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
 
 		String reqUri = req.getRequestURI();
 		String reqQueString = req.getQueryString();
+		String reqFullUrl = req.getRequestURL().toString();
+		String calledFullUrl = req.getScheme() + "://" + req.getLocalAddr() + ":" + req.getLocalPort() + reqUri;
 		System.out.println("Request URI : " + reqUri);
+		System.out.println("Requested local URL : " + calledFullUrl);
+		System.out.println("Request remote Port : " + req.getRemotePort());
+		System.out.println("Request Port : " + req.getLocalPort());
 		System.out.println("Query String : " + req.getQueryString());
 		String urlString;
 		ContentResponse contentRes;
@@ -73,15 +125,50 @@ public class WckangServlet extends HttpServlet {
 		String fullUrlString;
 		fullUrlString = urlString + reqUri;
 
+		if (reqUri.startsWith("/trace")) {
+
+		}
+
+		String reqId = req.getHeader("x-requestId");
+
+		TraceJsonVo traceJsonVo = traceMap.get(reqId);
+		
+		if (traceJsonVo == null) {
+			traceJsonVo = new TraceJsonVo();
+			traceJsonVo.target = calledFullUrl;
+			traceJsonVo.status = "200";
+			traceJsonVo.services = new ArrayList<>();
+			traceMap.put(reqId, traceJsonVo);
+		} else {
+			TraceJsonVo serviceTrace = new TraceJsonVo();
+			serviceTrace.target = fullUrlString;
+			serviceTrace.status = "200";
+			serviceTrace.services = new ArrayList<>();
+
+			TraceJsonVo temp = findTraceObject(traceJsonVo, fullUrlString);
+			if (temp != null) {
+				temp.services.add(serviceTrace);
+			}
+			else
+			{
+				traceJsonVo.services.add(serviceTrace);
+			}
+		}
+
+		System.out.println("----------------");
+		System.out.println(traceMap.get(reqId).toString());
+		System.out.println("----------------");
+
 		if (urlString != null) {
 			try {
 				if (reqQueString != null)
 					fullUrlString += "?" + reqQueString;
 
-				contentRes = sendHttpGet(fullUrlString);
-				HttpFields resHeaders = contentRes.getHeaders();
-//				printResHeader (resHeaders);
+				System.out.println("call url = " + fullUrlString);
+				contentRes = sendHttpMessage(fullUrlString, HttpMethod.GET, req, "");
+//				contentRes = sendHttpGet(fullUrlString);
 
+				HttpFields resHeaders = contentRes.getHeaders();
 				resHeaders.forEach((httpField) -> {
 					if (httpField.getName().startsWith("x-")) {
 						res.setHeader(httpField.getName(), httpField.getValue());
@@ -100,47 +187,69 @@ public class WckangServlet extends HttpServlet {
 
 	}
 
-	private void simulateBlock(String reqUri) {
-		// regex test online => https://regex101.com/
-		Pattern p = Pattern.compile("^/(api)/(block)/([0-9]+)"); // api/block/4
-		Matcher matcher = p.matcher(reqUri);
-
-		if (matcher.matches()) {
-//            System.out.println(matcher.group(1));    // api
-//            System.out.println(matcher.group(2));    // block
-//            System.out.println(matcher.group(3));    // 4
-
-			int sleepSec = Integer.parseInt(matcher.group(3));
-
-			try {
-				Thread.sleep(sleepSec * 1000);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+	private TraceJsonVo findTraceObject(TraceJsonVo traceJsonVo, String fullUrlString) {
+		// TODO Auto-generated method stub
+		if (traceJsonVo.services.isEmpty())
+		{
+			System.out.println("target = " + traceJsonVo.target + " <--> fullUrlString = " + fullUrlString);
+			if (traceJsonVo.target.startsWith(fullUrlString))
+				return traceJsonVo;
+			else
+				return null;
+		}
+		else
+		{
+			for (TraceJsonVo service : traceJsonVo.services) {
+				TraceJsonVo temp = findTraceObject(service, fullUrlString);
+				if (temp != null)
+					return temp;
 			}
 		}
+		return null;
 	}
 
-	public static ContentResponse sendPostJson(String url, String bodyStr) throws Exception {
-
-		// String jsonStr = "{\"key\": \"value\"}";
-
-		HttpClient httpClient = new HttpClient();
-		httpClient.start();
-
-		// .header("content-type, "value1")
-		Request req = httpClient.newRequest(url).method(HttpMethod.POST)
-				.content(new StringContentProvider(bodyStr, "utf-8")).timeout(5, TimeUnit.SECONDS);
-
-		ContentResponse response = req.send();
-
-		System.out.println(response.getContentAsString());
-
-		// httpClient.stop();
-		return response;
-	}
+//
+//	private void simulateBlock(String reqUri) {
+//		// regex test online => https://regex101.com/
+//		Pattern p = Pattern.compile("^/(api)/(block)/([0-9]+)"); // api/block/4
+//		Matcher matcher = p.matcher(reqUri);
+//
+//		if (matcher.matches()) {
+////            System.out.println(matcher.group(1));    // api
+////            System.out.println(matcher.group(2));    // block
+////            System.out.println(matcher.group(3));    // 4
+//
+//			int sleepSec = Integer.parseInt(matcher.group(3));
+//
+//			try {
+//				Thread.sleep(sleepSec * 1000);
+//			} catch (InterruptedException e) {
+//				e.printStackTrace();
+//			}
+//		}
+//	}
+//
+//	public static ContentResponse sendPostJson(String url, String bodyStr) throws Exception {
+//
+//		// String jsonStr = "{\"key\": \"value\"}";
+//
+//		HttpClient httpClient = new HttpClient();
+//		httpClient.start();
+//		
+//		// .header("content-type, "value1")
+//		Request req = httpClient.newRequest(url).method(HttpMethod.POST)
+//				.content(new StringContentProvider(bodyStr, "utf-8")).timeout(5, TimeUnit.SECONDS);
+//
+//		ContentResponse response = req.send();
+//
+//		System.out.println(response.getContentAsString());
+//
+//		// httpClient.stop();
+//		return response;
+//	}
 
 	/**
-	 * POST �슂泥� 泥섎━
+	 * POST 占쎌뒄筌ｏ옙 筌ｌ꼶�봺
 	 */
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
@@ -172,17 +281,18 @@ public class WckangServlet extends HttpServlet {
 			try {
 				String fullUrlString;
 				fullUrlString = urlString + reqUri;
+
 				if (reqQueString != null)
 					fullUrlString += "?" + reqQueString;
-				contentRes = sendPostJson(fullUrlString, sb.toString());
+
+				contentRes = sendHttpMessage(fullUrlString, HttpMethod.GET, req, sb.toString());
+
 				HttpFields resHeaders = contentRes.getHeaders();
-//				printResHeader (resHeaders);
 				resHeaders.forEach((httpField) -> {
 					if (httpField.getName().startsWith("x-")) {
 						res.setHeader(httpField.getName(), httpField.getValue());
 					}
 				});
-//				res.setHeader("Res-custom-header", "Set response header");
 				res.setContentType(resHeaders.get("content-type").toString());
 				res.setStatus(200);
 
@@ -196,20 +306,15 @@ public class WckangServlet extends HttpServlet {
 
 	}
 
-	/**
-	 * �슂泥� �뿤�뜑 泥섎━
-	 *
-	 * @param req
-	 */
-	private void printHeader(HttpServletRequest req) {
-
-		Enumeration<String> headerNames = req.getHeaderNames();
-
-		while (headerNames.hasMoreElements()) {
-			String headerName = headerNames.nextElement();
-
-			System.out.println("[Header] Key : " + headerName + ", value : " + req.getHeader(headerName));
-		}
-
-	}
+//	private void printHeader(HttpServletRequest req) {
+//
+//		Enumeration<String> headerNames = req.getHeaderNames();
+//
+//		while (headerNames.hasMoreElements()) {
+//			String headerName = headerNames.nextElement();
+//
+//			System.out.println("[Header] Key : " + headerName + ", value : " + req.getHeader(headerName));
+//		}
+//
+//	}
 }

@@ -12,4 +12,5 @@ public class JsonVo {
 	public String toString() {
 		return "Proxy [port=" + port + ", routes =" + routes + "]";
 	}
+	
 }

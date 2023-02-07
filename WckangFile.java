@@ -8,6 +8,7 @@ import java.util.Scanner;
 
 public class WckangFile {
 
+
 	public static BufferedReader openFile(String filename) throws IOException {
 		BufferedReader fileReader = new BufferedReader(new FileReader(filename));// , Charset.forName("UTF-8")));
 		return fileReader;
@@ -23,11 +24,11 @@ public class WckangFile {
 	}
 
 	public static String[] readConsole(String delimiter) {
-		Scanner sc;
-		sc = new Scanner(System.in);
-		String line = sc.nextLine();
-		String[] str = line.split(delimiter);
-		return str;
+		try (Scanner sc = new Scanner(System.in)) {
+			String line = sc.nextLine();
+			String[] str = line.split(delimiter);
+			return str;
+		}
 	}
 
 	public void readProxy() throws IOException {

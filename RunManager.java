@@ -1,5 +1,7 @@
 package com.lgcns.test;
 
+import java.util.HashMap;
+
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletHandler;
@@ -10,7 +12,7 @@ public class RunManager {
 	public static void loadJsonFile(String fileName) {
 		WckangJson loader = new WckangJson();
 		jsonProxy = loader.loadData(fileName);
-
+		
 //		System.out.println("Json result = " + json.toString());
 //		 loader.writeJsonFile(json, fileName);
 //		System.out.println(json.routes.get(1).get("pathPrefix"));
@@ -38,7 +40,8 @@ public class RunManager {
 		// TODO Auto-generated method stub
 
 		loadJsonFile(args[0]);
-
+		
+		
 		RunManager server = new RunManager();
 		server.start();
 	}
