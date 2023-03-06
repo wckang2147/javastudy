@@ -6,6 +6,25 @@ import java.io.InputStreamReader;
 
 public class RunManagerKeyIn {
 	
+	public myScanner()
+	{
+			Scanner sc = new Scanner(System.in);
+			
+			// until space
+			String str1 = sc.next();
+			
+			// until Enter
+			String str2 = sc.nextLine();
+			
+			// read integer
+			int i = sc.nextInt();
+			
+			System.out.println("str1 : " + str1);
+			System.out.println("str2 : " + str2);
+			System.out.println("ScannInt : " + i);
+		}
+	}
+
 	public static void inputKey() throws IOException {
 		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 		String line = null;

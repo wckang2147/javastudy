@@ -2,11 +2,13 @@ package com.lgcns.test;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.util.List;
 import java.util.Scanner;
 
 public class MyFile {
@@ -84,6 +86,19 @@ public class MyFile {
 			}
 		}
 		return null;
+	}
+	public static void scanDir(String folderPath, List<String> fileLst) {
+		File[] files = new File(folderPath).listFiles();
+		
+		for(File f : files) {
+			if(f.isDirectory()) {
+				scanDir(f.getPath(), fileLst);
+			} else {
+				System.out.println("Path = " + f.getPath() );
+				System.out.println("Absolute Path = " + f.getAbsolutePath() );
+				fileLst.add(f.getAbsolutePath());
+			}
+		}
 	}
 
 }
