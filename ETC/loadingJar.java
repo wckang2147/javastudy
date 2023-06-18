@@ -9,3 +9,9 @@ Method    method    = tempClass.getMethod( "optionSet",
                                                                     strTemp.getClass()
                                                             } );
 method.invoke( object, strTemp );
+
+
+
+// Loading Class
+File jarFile    = new File( "class package path" );      // 파일명이 아닌 폴더면만 기제
+URL[] urls = new URL[]{ new URL( file.toURL() ) };
