@@ -30,3 +30,17 @@ public static void main(String args[]) {
 public static void main(String args[]) {
   String currentPath = new File("").getAbsolutePath();
 }
+
+
+// 작업 디렉토리를 절대경로로 변환
+public static void main(String args[]) {
+  String currentPath = 
+          FileSystems.getDefault().getPath("").toAbsolutePath().toString();
+}
+public static void main(String args[]) {
+  String currentPath = System.getProperty("user.dir");
+}
+public static void main(String args[]) {
+  String currentPaht = Paths.get("").toAbsolutePath().toString();
+}
+
