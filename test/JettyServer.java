@@ -10,6 +10,8 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Enumeration;
 
 public class JettyServer {
@@ -38,6 +40,29 @@ public class JettyServer {
             response.getWriter().println("클라이언트가 요청한 URL: " + url);
         	System.out.println(url + target);
 
+            try {
+                URI uri = new URI(url);
+                String path = uri.getPath();
+                String query = uri.getQuery();
+                if (path != null && path.startsWith("/")) {
+                    path = path.substring(1); // Remove leading "/"
+                    String[] pathComponents = path.split("/");
+                    for (String component : pathComponents) {
+                        System.out.println("Path Component: " + component);
+                    }
+                }
+                if (query != null) {
+                    String[] queryParams = query.split("&");
+                    for (String param : queryParams) {
+                        String[] pair = param.split("=");
+                        if (pair.length == 2) {
+                            System.out.println("Query Parameter: " + pair[0] + "=" + pair[1]);
+                        }
+                    }
+                }
+            } catch (URISyntaxException e) {
+                e.printStackTrace();
+            }
             if (url.endsWith("/proxy")) {
             	System.out.println("called proxy");
             	JettyClient.sendRequest("http://localhost:8080", "GET", "", "");
